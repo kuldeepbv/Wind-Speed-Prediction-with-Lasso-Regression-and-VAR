@@ -37,29 +37,29 @@ library(reshape2)
 library(vars)
 ```
 
-## Objective 
+## Objective
 
-- The primary goal of this project is to develop a LASSO(Least Absolute Shrinkage and Selection Operator) model to accurately forecast wind speed.
+-   The primary goal of this project is to develop a LASSO(Least Absolute Shrinkage and Selection Operator) model to accurately forecast wind speed.
 
-- I will also explain Lasso Regression and its applicability for modeling data having large number of predictors and where feature selection and regularization are important.
+-   I will also explain Lasso Regression and its applicability for modeling data having large number of predictors and where feature selection and regularization are important.
 
-- At last, I will compare the performance of the Lasso model with that of a Vector Autoregression(VAR) model for wind speed prediction.
+-   At last, I will compare the performance of the Lasso model with that of a Vector Autoregression(VAR) model for wind speed prediction.
 
 ## Lasso Regression
 
-- Lasso Regression is a machine learning technique used for regression analysis which is widely used to handle datasets with large number of predictors.
+-   Lasso Regression is a machine learning technique used for regression analysis which is widely used to handle datasets with large number of predictors.
 
-- Lasso Regression is widely used for its ability to perform feature selection and regularization. The regularization parameter, lambda (λ), controls the strength of regularization in Lasso Regression.
+-   Lasso Regression is widely used for its ability to perform feature selection and regularization. The regularization parameter, lambda (λ), controls the strength of regularization in Lasso Regression.
 
 ## Mathematics of Lasso Regression
 
-- This is the LASSO objective function 
+-   This is the LASSO objective function
 
 $$
 \arg \min_{\beta_0, \beta} \left\{ \frac{1}{N} \sum_{i=1}^{N} \left( y_i -        \beta_0 - \sum_{j=1}^{p} x_{ij} \beta_j \right)^2 \right\} + \lambda               \sum_{j=1}^{p} |\beta_j|
 $$
 
-- This is the generalized form
+-   This is the generalized form
 
 $$
 E(\beta) + \lambda R(\beta)                                             
@@ -67,22 +67,23 @@ $$
 
 ## Data Collection
 
--  The dataset was sourced from Kaggle providing crucial insights into average wind speed patterns from January 1961 to December 1978.
+-   The dataset was sourced from Kaggle providing crucial insights into average wind speed patterns from January 1961 to December 1978.
 
-- This dataset has 6574 Rows and following features-
-  * DATE: January 1961 to December 1978
-  * WIND: Average wind speed [knots]
-  * IND: First indicator value
-  * RAIN: Precipitation Amount (mm)
-  * IND.1: Second indicator value
-  * T.MAX: Maximum Temperature (°C)
-  * IND.2: Third indicator value
-  * T.MIN: Minimum Temperature (°C)
-  * T.MIN.G: Grass Minimum Temperature (°C)
+-   This dataset has 6574 Rows and following features-
+
+    -   DATE: January 1961 to December 1978
+    -   WIND: Average wind speed \[knots\]
+    -   IND: First indicator value
+    -   RAIN: Precipitation Amount (mm)
+    -   IND.1: Second indicator value
+    -   T.MAX: Maximum Temperature (°C)
+    -   IND.2: Third indicator value
+    -   T.MIN: Minimum Temperature (°C)
+    -   T.MIN.G: Grass Minimum Temperature (°C)
 
 ## Data Preprocessing
 
-- Null Values
+-   Null Values
 
 ```{r}
 data <- read.csv("D:/Spring-24/CDA-500-Time-Series/Final_Project/wind_dataset.csv")
@@ -98,11 +99,11 @@ for (col in names(data)) {
 }
 ```
 
-- Imputed the Null Values with the mean value of the respective feature.
+-   Imputed the Null Values with the mean value of the respective feature.
 
 ## Trend of Wind Speed with Time
 
-- The trend graph appears to be uncertain.
+-   The trend graph appears to be uncertain.
 
 ```{r}
 data$DATE <- as.Date(data$DATE)
@@ -133,9 +134,9 @@ ggplot(data = correlation_data, aes(x = Var1, y = Var2, fill = value)) +
 
 ## Models
 
-- I have used Lasso Regression to predict wind speed.
+-   I have used Lasso Regression to predict wind speed.
 
-- Alongside, I have build a VAR Model to compare it with LASSO.
+-   Alongside, I have build a VAR Model to compare it with LASSO.
 
 ## Comparison Between Models
 
@@ -195,7 +196,7 @@ ggplot(melted_results, aes(x = variable, y = value, fill = Model)) +
   facet_wrap(~variable, scales = "free")
 ```
 
-## Prediction of Lasso 
+## Prediction of Lasso
 
 ```{r}
 plot_data <- data.frame(Date = test_dates, Actual = y_test, Predicted = lasso_predictions)
@@ -212,12 +213,12 @@ ggplot(plot_data) +
 
 ## Results
 
-- This indicates that Lasso Regression outperformed the VAR model.
+-   This indicates that Lasso Regression outperformed the VAR model.
 
-- By leveraging Lasso Regression, we successfully identified and utilized the most relevant features for prediction.
+-   By leveraging Lasso Regression, it successfully identified and utilized the most relevant features and the best lambda value for prediction.
 
 ## References
 
-- https://www.kaggle.com/datasets/fedesoriano/wind-speed-prediction-dataset/data
+-   https://www.kaggle.com/datasets/fedesoriano/wind-speed-prediction-dataset/data
 
 ## Thank You!
