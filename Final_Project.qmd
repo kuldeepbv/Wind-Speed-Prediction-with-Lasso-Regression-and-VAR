@@ -1,0 +1,223 @@
+---
+title: "Wind Speed Prediction with Lasso Regression"
+author: "Kuldeep Bhurabhai Vadiya"
+format: revealjs
+editor: visual
+toc: true
+toc-depth: 1
+slide-number: true
+smaller: false
+scrollable: True 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+# Set up chunk for all slides
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  dev.args = list(pointsize = 11)
+)
+```
+
+```{r}
+library(reprex)
+library(forecast)
+library(glmnet)
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(stats)
+library(imputeTS)
+library(zoo)
+library(reshape2)
+library(vars)
+```
+
+## Objective 
+
+- The primary goal of this project is to develop a LASSO(Least Absolute Shrinkage and Selection Operator) model to accurately forecast wind speed.
+
+- I will also explain Lasso Regression and its applicability for modeling data having large number of predictors and where feature selection and regularization are important.
+
+- At last, I will compare the performance of the Lasso model with that of a Vector Autoregression(VAR) model for wind speed prediction.
+
+## Lasso Regression
+
+- Lasso Regression is a machine learning technique used for regression analysis which is widely used to handle datasets with large number of predictors.
+
+- Lasso Regression is widely used for its ability to perform feature selection and regularization. The regularization parameter, lambda (λ), controls the strength of regularization in Lasso Regression.
+
+## Mathematics of Lasso Regression
+
+- This is the LASSO objective function 
+
+$$
+\arg \min_{\beta_0, \beta} \left\{ \frac{1}{N} \sum_{i=1}^{N} \left( y_i -        \beta_0 - \sum_{j=1}^{p} x_{ij} \beta_j \right)^2 \right\} + \lambda               \sum_{j=1}^{p} |\beta_j|
+$$
+
+- This is the generalized form
+
+$$
+E(\beta) + \lambda R(\beta)                                             
+$$
+
+## Data Collection
+
+-  The dataset was sourced from Kaggle providing crucial insights into average wind speed patterns from January 1961 to December 1978.
+
+- This dataset has 6574 Rows and following features-
+  * DATE: January 1961 to December 1978
+  * WIND: Average wind speed [knots]
+  * IND: First indicator value
+  * RAIN: Precipitation Amount (mm)
+  * IND.1: Second indicator value
+  * T.MAX: Maximum Temperature (°C)
+  * IND.2: Third indicator value
+  * T.MIN: Minimum Temperature (°C)
+  * T.MIN.G: Grass Minimum Temperature (°C)
+
+## Data Preprocessing
+
+- Null Values
+
+```{r}
+data <- read.csv("D:/Spring-24/CDA-500-Time-Series/Final_Project/wind_dataset.csv")
+
+null_values <- is.na(data)
+
+colSums(null_values)
+
+mean_values <- sapply(data, function(x) mean(x, na.rm = TRUE))
+
+for (col in names(data)) {
+  data[is.na(data[[col]]), col] <- mean_values[col]
+}
+```
+
+- Imputed the Null Values with the mean value of the respective feature.
+
+## Trend of Wind Speed with Time
+
+- The trend graph appears to be uncertain.
+
+```{r}
+data$DATE <- as.Date(data$DATE)
+
+ggplot(data, aes(x = DATE, y = WIND)) +
+  geom_line(aes(group = 1)) +
+  labs(x = "Date", y = "Wind Speed", title = "Wind Speed Over Years") +
+  scale_x_date(labels = date_format("%Y"), 
+               breaks = seq(as.Date("1961-01-01"), as.Date("1978-12-31"), by = "1 year"))
+```
+
+## Correlation plot
+
+```{r}
+numeric_data <- data[, !colnames(data) %in% c("DATE")]
+
+correlation_matrix <- cor(numeric_data)
+
+correlation_data <- melt(correlation_matrix)
+
+ggplot(data = correlation_data, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(value, 2)), size = 3, color = "black") +  # Display correlation values
+  labs(title = "Correlation Plot", x = "Features", y = "Features", fill = "Correlation") +
+  scale_fill_viridis_c() +
+  theme_minimal()
+```
+
+## Models
+
+- I have used Lasso Regression to predict wind speed.
+
+- Alongside, I have build a VAR Model to compare it with LASSO.
+
+## Comparison Between Models
+
+```{r}
+X <- as.matrix(data[, !colnames(data) %in% c("DATE", "WIND")])
+y <- as.matrix(data$WIND)
+
+cutoff_index <- ceiling(0.8 * nrow(data))
+
+X_train <- X[1:cutoff_index, ]
+X_test <- X[(cutoff_index + 1):nrow(data), ]
+y_train <- y[1:cutoff_index, ]
+y_test <- y[(cutoff_index + 1):nrow(data), ]
+train_dates <- head(data$DATE, cutoff_index)
+test_dates <- tail(data$DATE, nrow(data) - cutoff_index)
+
+lasso_model <- cv.glmnet(x = X_train, y = y_train, alpha = 1)
+best_lambda <- lasso_model$lambda.min  
+lasso_predictions <- predict(lasso_model, newx = X_test, s = best_lambda)
+
+mse_lasso <- mean((y_test - lasso_predictions)^2)
+rmse_lasso <- sqrt(mse_lasso)
+mae_lasso <- mean(abs(y_test - lasso_predictions))
+r_squared_lasso <- cor(y_test, lasso_predictions)^2
+
+## VAR
+
+var_model <- VAR(data[, !colnames(data) %in% c("DATE")], p = 2)  
+
+var_forecast <- predict(var_model, n.ahead = nrow(X_test))
+
+var_predictions <- var_forecast$fcst$WIND[, "fcst"]
+
+mse_var <- mean((y_test - var_predictions)^2)
+rmse_var <- sqrt(mse_var)
+mae_var <- mean(abs(y_test - var_predictions))
+r_squared_var <- cor(y_test, var_predictions)^2
+
+models <- c("Lasso", "VAR")
+mse <- c(mse_lasso, mse_var)
+rmse <- c(rmse_lasso, rmse_var)
+mae <- c(mae_lasso, mae_var)
+rsquared <- c(r_squared_lasso, r_squared_var)
+
+results <- data.frame(Model = models, MSE = mse, RMSE = rmse, MAE = mae, R_squared = rsquared)
+
+melted_results <- melt(results, id.vars = "Model")
+
+ggplot(melted_results, aes(x = variable, y = value, fill = Model)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  labs(title = "Performance Metrics for LASSO and VAR",
+       x = "Metric",
+       y = "Value") +
+  scale_fill_manual(values = c("Lasso" = "blue", "VAR" = "green")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  facet_wrap(~variable, scales = "free")
+```
+
+## Prediction of Lasso 
+
+```{r}
+plot_data <- data.frame(Date = test_dates, Actual = y_test, Predicted = lasso_predictions)
+
+ggplot(plot_data) +
+  geom_line(aes(x = Date, y = Actual, color = "Actual")) +
+  geom_line(aes(x = Date, y = s1, color = "Predicted")) +
+  scale_color_manual(values = c("Actual" = "blue", "Predicted" = "red"), name = "Legend") +
+  labs(x = "Date", y = "Wind Speed", title = "Actual vs. Predicted") +
+  guides(color = guide_legend(title = "Legend")) +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+## Results
+
+- This indicates that Lasso Regression outperformed the VAR model.
+
+- By leveraging Lasso Regression, we successfully identified and utilized the most relevant features for prediction.
+
+## References
+
+- https://www.kaggle.com/datasets/fedesoriano/wind-speed-prediction-dataset/data
+
+## Thank You!
